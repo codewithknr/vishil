@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vishil Ice Cream – Distributor Management</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --jersey-blue: #1a3a6b;
+    --jersey-sky: #4a90d9;
+    --jersey-cream: #fff8f0;
+    --jersey-pink: #f7cad0;
+    --jersey-gold: #f0a500;
+    --jersey-mint: #a8e6cf;
+    --jersey-dark: #0d1f3c;
+    --jersey-white: #ffffff;
+    --sidebar-w: 220px;
+    --header-h: 60px;
+    --radius: 10px;
+    --shadow: 0 2px 8px rgba(26,58,107,0.10);
+    --shadow-md: 0 4px 16px rgba(26,58,107,0.14);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f4fa; color: #1a2340; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* TOP BAR */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0; height: var(--header-h);
+    background: var(--jersey-blue); color: white;
+    display: flex; align-items: center; gap: 14px; padding: 0 24px;
+    z-index: 200; box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  }
+  .topbar .logo-cone { font-size: 26px; }
+  .topbar .brand { font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
+  .topbar .brand span { color: var(--jersey-pink); }
+  .topbar .sub { font-size: 11px; color: #aac4f0; margin-top: 1px; }
+  .topbar .spacer { flex: 1; }
+  .topbar .date-info { font-size: 12px; color: #aac4f0; text-align: right; }
+  .topbar .user-pill { background: rgba(255,255,255,0.15); border-radius: 20px; padding: 5px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
+
+  /* SIDEBAR */
+  .sidebar {
+    position: fixed; left: 0; top: var(--header-h); bottom: 0; width: var(--sidebar-w);
+    background: var(--jersey-dark); color: #cfe0ff;
+    padding: 16px 0; z-index: 100; overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  .nav-section { font-size: 10px; font-weight: 600; letter-spacing: 1.2px; color: #556a8a; padding: 14px 20px 6px; text-transform: uppercase; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 20px;
+    font-size: 13px; color: #8eaacc; cursor: pointer;
+    border-left: 3px solid transparent; transition: all 0.15s;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: #cfe0ff; }
+  .nav-item.active { background: rgba(74,144,217,0.18); color: white; border-left-color: var(--jersey-sky); font-weight: 600; }
+  .nav-item .icon { font-size: 17px; width: 22px; }
+  .nav-bottom { margin-top: auto; padding: 16px 20px; font-size: 11px; color: #3d5070; border-top: 1px solid #1e3050; }
+
+  /* MAIN CONTENT */
+  .main { margin-left: var(--sidebar-w); margin-top: var(--header-h); padding: 24px; min-height: calc(100vh - var(--header-h)); }
+
+  /* PAGES */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* CARDS */
+  .card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--jersey-blue); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .card-title .icon { font-size: 18px; }
+
+  /* STAT CARDS */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 22px; }
+  .stat-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; border-top: 3px solid transparent; }
+  .stat-card.blue { border-top-color: var(--jersey-sky); }
+  .stat-card.gold { border-top-color: var(--jersey-gold); }
+  .stat-card.mint { border-top-color: #2ecc8f; }
+  .stat-card.pink { border-top-color: #e05a8a; }
+  .stat-card.purple { border-top-color: #7c4dff; }
+  .stat-label { font-size: 11px; color: #7a90b0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
+  .stat-value { font-size: 26px; font-weight: 700; color: var(--jersey-blue); margin: 4px 0 2px; }
+  .stat-sub { font-size: 11px; color: #9aafca; }
+
+  /* CHART GRID */
+  .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 22px; }
+
+  /* TABLES */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f0f4fa; color: #4a6080; font-weight: 600; text-align: left; padding: 10px 12px; border-bottom: 1.5px solid #dde5f0; white-space: nowrap; }
+  td { padding: 9px 12px; border-bottom: 1px solid #eef2f8; color: #2a3a55; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f7faff; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: #d4f4e7; color: #167a50; }
+  .badge-red { background: #fde8e8; color: #b02020; }
+  .badge-amber { background: #fff3cc; color: #8a6000; }
+  .badge-blue { background: #dbeeff; color: #1a5aa0; }
+  .badge-purple { background: #ede8ff; color: #5430a0; }
+
+  /* FORMS */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 12px; font-weight: 600; color: #5a6e8a; }
+  .form-group input, .form-group select, .form-group textarea {
+    padding: 8px 11px; border: 1.5px solid #d0daf0; border-radius: 7px;
+    font-size: 13px; color: #1a2340; background: white; outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--jersey-sky); }
+  .form-group textarea { min-height: 70px; resize: vertical; font-family: inherit; }
+
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-primary { background: var(--jersey-blue); color: white; }
+  .btn-primary:hover { background: #1e4a8a; }
+  .btn-success { background: #1aab6d; color: white; }
+  .btn-success:hover { background: #168a56; }
+  .btn-danger { background: #d93535; color: white; }
+  .btn-danger:hover { background: #b02828; }
+  .btn-outline { background: white; color: var(--jersey-blue); border: 1.5px solid #c0cce8; }
+  .btn-outline:hover { background: #f0f4fa; }
+  .btn-gold { background: var(--jersey-gold); color: white; }
+  .btn-gold:hover { background: #c78800; }
+  .btn-sm { padding: 5px 11px; font-size: 12px; }
+
+  /* TOOLBAR */
+  .page-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .page-title { font-size: 20px; font-weight: 700; color: var(--jersey-blue); flex: 1; }
+  .search-input { padding: 7px 12px; border: 1.5px solid #d0daf0; border-radius: 7px; font-size: 13px; width: 200px; outline: none; }
+  .search-input:focus { border-color: var(--jersey-sky); }
+  .filter-select { padding: 7px 10px; border: 1.5px solid #d0daf0; border-radius: 7px; font-size: 13px; outline: none; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(10,20,50,0.55); z-index: 500; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 12px; box-shadow: var(--shadow-md); padding: 24px; width: 90%; max-width: 680px; max-height: 90vh; overflow-y: auto; }
+  .modal-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .modal-title { font-size: 16px; font-weight: 700; color: var(--jersey-blue); flex: 1; }
+  .modal-close { cursor: pointer; font-size: 22px; color: #8a9ab0; line-height: 1; }
+  .modal-close:hover { color: #333; }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid #eef2f8; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 0; border-bottom: 2px solid #dde5f0; margin-bottom: 20px; }
+  .tab { padding: 8px 18px; font-size: 13px; font-weight: 600; color: #7a90b0; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .tab.active { color: var(--jersey-blue); border-bottom-color: var(--jersey-sky); }
+  .tab:hover:not(.active) { color: #3a5080; }
+
+  /* PERIOD SELECTOR */
+  .period-tabs { display: flex; gap: 6px; }
+  .period-tab { padding: 5px 13px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; border: 1.5px solid #c0cce8; color: #5a6e8a; background: white; }
+  .period-tab.active { background: var(--jersey-blue); color: white; border-color: var(--jersey-blue); }
+
+  /* DASHBOARD SPECIFIC */
+  .ice-banner {
+    background: linear-gradient(135deg, var(--jersey-blue) 0%, #2a5aaa 60%, #4a90d9 100%);
+    border-radius: 12px; padding: 22px 28px; color: white; margin-bottom: 22px;
+    display: flex; align-items: center; gap: 20px;
+  }
+  .ice-banner .banner-icon { font-size: 50px; }
+  .ice-banner h2 { font-size: 20px; font-weight: 700; }
+  .ice-banner p { font-size: 13px; color: #aac4f0; margin-top: 4px; }
+  .ice-banner .banner-stats { display: flex; gap: 24px; margin-left: auto; }
+  .ice-banner .bs { text-align: center; }
+  .ice-banner .bs-val { font-size: 22px; font-weight: 700; }
+  .ice-banner .bs-lbl { font-size: 11px; color: #aac4f0; }
+
+  /* NOTIFICATION DOTS */
+  .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #f0a500; display: inline-block; margin-left: 4px; }
+
+  /* EMPTY STATE */
+  .empty-state { text-align: center; padding: 40px 20px; color: #8a9ab0; }
+  .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+  .empty-state p { font-size: 14px; }
+
+  /* PRINT */
+  @media print {
+    .sidebar, .topbar, .btn, .modal-overlay { display: none !important; }
+    .main { margin: 0 !important; padding: 0 !important; }
+    .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #b0c4e0; border-radius: 3px; }
+
+  .trend-up { color: #1aab6d; font-size: 11px; font-weight: 600; }
+  .trend-dn { color: #d93535; font-size: 11px; font-weight: 600; }
+  .action-btns { display: flex; gap: 6px; }
+  .info-row { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 14px; }
+  .info-item { font-size: 13px; }
+  .info-item span { font-weight: 600; color: var(--jersey-blue); }
+  .section-sep { border: none; border-top: 1px solid #eef2f8; margin: 18px 0; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 5px; font-size: 11px; background: #f0f4fa; color: #4a6080; margin-right: 4px; }
+  .required { color: #d93535; }
+  .text-right { text-align: right; }
+  .font-mono { font-family: 'Consolas', monospace; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo-cone">🍦</div>
+  <div>
+    <div class="brand">Vishil <span>Ice Cream</span></div>
+    <div class="sub">Distributor Management System</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="date-info" id="topDateInfo"></div>
+  <div class="user-pill">👤 Admin</div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="nav-section">Overview</div>
+  <div class="nav-item active" onclick="showPage('dashboard')"><span class="icon">📊</span> Dashboard</div>
+
+  <div class="nav-section">Operations</div>
+  <div class="nav-item" onclick="showPage('sales')"><span class="icon">💰</span> Sales Entry</div>
+  <div class="nav-item" onclick="showPage('collections')"><span class="icon">💳</span> Collections</div>
+  <div class="nav-item" onclick="showPage('orders')"><span class="icon">📦</span> Orders to Vishil</div>
+
+  <div class="nav-section">Master Data</div>
+  <div class="nav-item" onclick="showPage('retailers')"><span class="icon">🏪</span> Retailer Outlets</div>
+  <div class="nav-item" onclick="showPage('products')"><span class="icon">🍨</span> Products</div>
+
+  <div class="nav-section">Reports</div>
+  <div class="nav-item" onclick="showPage('reports')"><span class="icon">📈</span> Reports & Export</div>
+
+  <div class="nav-bottom">
+    <div style="font-weight:600;color:#5a7080;margin-bottom:4px;">Vishil Ice Cream</div>
+    <div>Distributor v2.0</div>
+    <div style="margin-top:6px;color:#3d5070;">Data stored locally</div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+  <!-- ===== DASHBOARD PAGE ===== -->
+  <div class="page active" id="page-dashboard">
+
+    <div class="ice-banner">
+      <div class="banner-icon">🍦</div>
+      <div>
+        <h2 id="bannerGreeting">Good Morning, Admin!</h2>
+        <p id="bannerDate">Loading today's snapshot...</p>
+      </div>
+      <div class="banner-stats" id="bannerStats"></div>
+    </div>
+
+    <!-- Period Tabs -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-size:15px;font-weight:700;color:var(--jersey-blue);">Performance Overview</div>
+      <div class="period-tabs">
+        <div class="period-tab active" onclick="setDashPeriod('today',this)">Today</div>
+        <div class="period-tab" onclick="setDashPeriod('month',this)">This Month</div>
+        <div class="period-tab" onclick="setDashPeriod('year',this)">This Year</div>
+      </div>
+    </div>
+
+    <div class="stats-grid" id="dashStats"></div>
+
+    <div class="chart-grid">
+      <div class="card">
+        <div class="card-title"><span class="icon">📊</span> Sales by Outlet (Top 10)</div>
+        <div style="position:relative;height:220px;"><canvas id="chartOutlets" role="img" aria-label="Bar chart of sales by outlet">Sales by outlet chart</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">📈</span> Sales Trend</div>
+        <div style="position:relative;height:220px;"><canvas id="chartTrend" role="img" aria-label="Line chart of sales trend">Sales trend chart</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🍨</span> Sales by Product</div>
+        <div style="position:relative;height:220px;"><canvas id="chartProducts" role="img" aria-label="Pie chart of sales by product">Product mix chart</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">💳</span> Collection Status</div>
+        <div style="position:relative;height:220px;"><canvas id="chartCollections" role="img" aria-label="Doughnut chart of collection status">Collections chart</canvas></div>
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="chart-grid">
+      <div class="card">
+        <div class="card-title"><span class="icon">🕐</span> Recent Sales</div>
+        <div class="table-wrap" id="dashRecentSales"></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">⚠️</span> Pending Collections</div>
+        <div id="dashPendingColl"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SALES PAGE ===== -->
+  <div class="page" id="page-sales">
+    <div class="page-header">
+      <div class="page-title">💰 Sales Entry</div>
+      <input class="search-input" type="text" placeholder="Search sales..." id="salesSearch" oninput="renderSales()">
+      <select class="filter-select" id="salesRetFilter" onchange="renderSales()">
+        <option value="">All Retailers</option>
+      </select>
+      <button class="btn btn-primary" onclick="openSaleModal()">+ Add Sale</button>
+      <button class="btn btn-gold btn-sm" onclick="exportTableToExcel('salesTable','Sales')">⬇ Export</button>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="setSalesTab('all',this)">All Sales</div>
+      <div class="tab" onclick="setSalesTab('today',this)">Today</div>
+      <div class="tab" onclick="setSalesTab('week',this)">This Week</div>
+      <div class="tab" onclick="setSalesTab('month',this)">This Month</div>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table id="salesTable">
+          <thead>
+            <tr>
+              <th>#</th><th>Date</th><th>Retailer</th><th>Product</th>
+              <th>Qty</th><th>Rate</th><th>Amount</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="salesBody"></tbody>
+        </table>
+      </div>
+      <div id="salesEmpty" class="empty-state" style="display:none;">
+        <div class="icon">💰</div><p>No sales found. Add your first sale!</p>
+      </div>
+    </div>
+
+    <!-- Sales Summary Bar -->
+    <div class="stats-grid" id="salesSummary" style="margin-top:16px;"></div>
+  </div>
+
+  <!-- ===== COLLECTIONS PAGE ===== -->
+  <div class="page" id="page-collections">
+    <div class="page-header">
+      <div class="page-title">💳 Collections</div>
+      <input class="search-input" type="text" placeholder="Search..." id="collSearch" oninput="renderCollections()">
+      <select class="filter-select" id="collStatusFilter" onchange="renderCollections()">
+        <option value="">All Status</option>
+        <option value="collected">Collected</option>
+        <option value="pending">Pending</option>
+        <option value="partial">Partial</option>
+      </select>
+      <button class="btn btn-primary" onclick="openCollModal()">+ Add Collection</button>
+      <button class="btn btn-gold btn-sm" onclick="exportTableToExcel('collTable','Collections')">⬇ Export</button>
+    </div>
+
+    <div class="stats-grid" id="collStats" style="margin-bottom:18px;"></div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table id="collTable">
+          <thead>
+            <tr>
+              <th>#</th><th>Date</th><th>Retailer</th><th>Invoice#</th>
+              <th>Billed</th><th>Collected</th><th>Balance</th><th>Mode</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="collBody"></tbody>
+        </table>
+      </div>
+      <div id="collEmpty" class="empty-state" style="display:none;">
+        <div class="icon">💳</div><p>No collection records yet.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ORDERS PAGE ===== -->
+  <div class="page" id="page-orders">
+    <div class="page-header">
+      <div class="page-title">📦 Orders to Vishil Company</div>
+      <input class="search-input" type="text" placeholder="Search orders..." id="ordSearch" oninput="renderOrders()">
+      <select class="filter-select" id="ordStatusFilter" onchange="renderOrders()">
+        <option value="">All Status</option>
+        <option value="pending">Pending</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="delivered">Delivered</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+      <button class="btn btn-primary" onclick="openOrderModal()">+ New Order</button>
+      <button class="btn btn-gold btn-sm" onclick="exportTableToExcel('ordTable','Orders')">⬇ Export</button>
+    </div>
+
+    <div class="stats-grid" id="ordStats" style="margin-bottom:18px;"></div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table id="ordTable">
+          <thead>
+            <tr>
+              <th>#</th><th>Order Date</th><th>Product</th><th>Qty</th>
+              <th>Unit Cost</th><th>Total</th><th>Expected Delivery</th><th>Status</th><th>Notes</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ordBody"></tbody>
+        </table>
+      </div>
+      <div id="ordEmpty" class="empty-state" style="display:none;">
+        <div class="icon">📦</div><p>No orders placed yet.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RETAILERS PAGE ===== -->
+  <div class="page" id="page-retailers">
+    <div class="page-header">
+      <div class="page-title">🏪 Retailer Outlets</div>
+      <input class="search-input" type="text" placeholder="Search retailers..." id="retSearch" oninput="renderRetailers()">
+      <select class="filter-select" id="retZoneFilter" onchange="renderRetailers()">
+        <option value="">All Zones</option>
+        <option value="North">North</option>
+        <option value="South">South</option>
+        <option value="East">East</option>
+        <option value="West">West</option>
+        <option value="Central">Central</option>
+        <option value="Own Outlet">Own Outlet</option>
+      </select>
+      <button class="btn btn-primary" onclick="openRetModal()">+ Add Retailer</button>
+      <button class="btn btn-gold btn-sm" onclick="exportTableToExcel('retTable','Retailers')">⬇ Export</button>
+    </div>
+
+    <div class="stats-grid" id="retStats" style="margin-bottom:18px;"></div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table id="retTable">
+          <thead>
+            <tr>
+              <th>#</th><th>Code</th><th>Outlet Name</th><th>Owner</th>
+              <th>Phone</th><th>Zone</th><th>Address</th><th>Fridge</th><th>Credit Limit</th><th>Balance</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="retBody"></tbody>
+        </table>
+      </div>
+      <div id="retEmpty" class="empty-state" style="display:none;">
+        <div class="icon">🏪</div><p>No retailers added yet.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PRODUCTS PAGE ===== -->
+  <div class="page" id="page-products">
+    <div class="page-header">
+      <div class="page-title">🍨 Products</div>
+      <button class="btn btn-primary" onclick="openProdModal()">+ Add Product</button>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table id="prodTable">
+          <thead>
+            <tr><th>#</th><th>Code</th><th>Product Name</th><th>Category</th><th>Unit</th><th>Sale Rate</th><th>Cost Rate</th><th>Stock</th><th>Status</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="prodBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== REPORTS PAGE ===== -->
+  <div class="page" id="page-reports">
+    <div class="page-header">
+      <div class="page-title">📈 Reports & Export</div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="setReportTab('summary',this)">Summary Report</div>
+      <div class="tab" onclick="setReportTab('retailer',this)">Retailer-wise</div>
+      <div class="tab" onclick="setReportTab('product',this)">Product-wise</div>
+      <div class="tab" onclick="setReportTab('outstanding',this)">Outstanding</div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">
+        <div class="form-group">
+          <label>From Date</label>
+          <input type="date" id="rptFrom" style="width:150px;">
+        </div>
+        <div class="form-group">
+          <label>To Date</label>
+          <input type="date" id="rptTo" style="width:150px;">
+        </div>
+        <div class="form-group">
+          <label>Retailer</label>
+          <select id="rptRetailer" style="width:170px;">
+            <option value="">All Retailers</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Product</label>
+          <select id="rptProduct" style="width:160px;">
+            <option value="">All Products</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="generateReport()">Generate</button>
+        <button class="btn btn-gold" onclick="exportReport()">⬇ Export to Excel</button>
+        <button class="btn btn-outline" onclick="window.print()">🖨 Print</button>
+      </div>
+    </div>
+
+    <div id="reportContent"></div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ===== MODALS ===== -->
+
+<!-- Sale Modal -->
+<div class="modal-overlay" id="saleModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="saleModalTitle">🛒 Add Sale</div>
+      <div class="modal-close" onclick="closeModal('saleModal')">✕</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Date <span class="required">*</span></label>
+        <input type="date" id="saleDate">
+      </div>
+      <div class="form-group">
+        <label>Retailer <span class="required">*</span></label>
+        <select id="saleRetailer"></select>
+      </div>
+      <div class="form-group">
+        <label>Product <span class="required">*</span></label>
+        <select id="saleProduct" onchange="onSaleProdChange()"></select>
+      </div>
+      <div class="form-group">
+        <label>Quantity <span class="required">*</span></label>
+        <input type="number" id="saleQty" min="1" placeholder="0" oninput="calcSaleAmt()">
+      </div>
+      <div class="form-group">
+        <label>Rate (₹) <span class="required">*</span></label>
+        <input type="number" id="saleRate" min="0" step="0.01" placeholder="0.00" oninput="calcSaleAmt()">
+      </div>
+      <div class="form-group">
+        <label>Amount (₹)</label>
+        <input type="number" id="saleAmt" readonly style="background:#f7faff;">
+      </div>
+      <div class="form-group">
+        <label>Discount (₹)</label>
+        <input type="number" id="saleDisc" min="0" step="0.01" placeholder="0" oninput="calcSaleAmt()">
+      </div>
+      <div class="form-group">
+        <label>Net Amount (₹)</label>
+        <input type="number" id="saleNet" readonly style="background:#f7faff;">
+      </div>
+      <div class="form-group">
+        <label>Invoice #</label>
+        <input type="text" id="saleInv" placeholder="Auto or manual">
+      </div>
+      <div class="form-group">
+        <label>Payment Status</label>
+        <select id="salePay">
+          <option value="credit">Credit</option>
+          <option value="cash">Cash</option>
+          <option value="partial">Partial</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:12px;">
+      <label>Notes</label>
+      <textarea id="saleNotes" placeholder="Optional notes..."></textarea>
+    </div>
+    <input type="hidden" id="saleEditId">
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('saleModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSale()">Save Sale</button>
+    </div>
+  </div>
+</div>
+
+<!-- Collection Modal -->
+<div class="modal-overlay" id="collModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="collModalTitle">💳 Add Collection</div>
+      <div class="modal-close" onclick="closeModal('collModal')">✕</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Date <span class="required">*</span></label>
+        <input type="date" id="collDate">
+      </div>
+      <div class="form-group">
+        <label>Retailer <span class="required">*</span></label>
+        <select id="collRetailer" onchange="onCollRetChange()"></select>
+      </div>
+      <div class="form-group">
+        <label>Invoice # (optional)</label>
+        <select id="collInvoice"><option value="">Select Invoice...</option></select>
+      </div>
+      <div class="form-group">
+        <label>Total Billed (₹)</label>
+        <input type="number" id="collBilled" placeholder="0.00" oninput="calcCollBalance()">
+      </div>
+      <div class="form-group">
+        <label>Amount Collected (₹) <span class="required">*</span></label>
+        <input type="number" id="collAmt" placeholder="0.00" oninput="calcCollBalance()">
+      </div>
+      <div class="form-group">
+        <label>Balance (₹)</label>
+        <input type="number" id="collBalance" readonly style="background:#f7faff;">
+      </div>
+      <div class="form-group">
+        <label>Payment Mode</label>
+        <select id="collMode">
+          <option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Cheque</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Reference #</label>
+        <input type="text" id="collRef" placeholder="UPI/Cheque/TXN ref">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:12px;">
+      <label>Notes</label>
+      <textarea id="collNotes" placeholder="Optional notes..."></textarea>
+    </div>
+    <input type="hidden" id="collEditId">
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('collModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCollection()">Save Collection</button>
+    </div>
+  </div>
+</div>
+
+<!-- Order Modal -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="orderModalTitle">📦 Place Order to Vishil</div>
+      <div class="modal-close" onclick="closeModal('orderModal')">✕</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Order Date <span class="required">*</span></label>
+        <input type="date" id="ordDate">
+      </div>
+      <div class="form-group">
+        <label>Product <span class="required">*</span></label>
+        <select id="ordProduct" onchange="onOrdProdChange()"></select>
+      </div>
+      <div class="form-group">
+        <label>Quantity <span class="required">*</span></label>
+        <input type="number" id="ordQty" min="1" placeholder="0" oninput="calcOrdTotal()">
+      </div>
+      <div class="form-group">
+        <label>Unit Cost (₹)</label>
+        <input type="number" id="ordCost" placeholder="0.00" oninput="calcOrdTotal()">
+      </div>
+      <div class="form-group">
+        <label>Total Cost (₹)</label>
+        <input type="number" id="ordTotal" readonly style="background:#f7faff;">
+      </div>
+      <div class="form-group">
+        <label>Expected Delivery</label>
+        <input type="date" id="ordDelivery">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="ordStatus">
+          <option value="pending">Pending</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Order Ref #</label>
+        <input type="text" id="ordRef" placeholder="Vishil order ref">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:12px;">
+      <label>Notes</label>
+      <textarea id="ordNotes" placeholder="Special instructions..."></textarea>
+    </div>
+    <input type="hidden" id="ordEditId">
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('orderModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOrder()">Save Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- Retailer Modal -->
+<div class="modal-overlay" id="retModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="retModalTitle">🏪 Add Retailer Outlet</div>
+      <div class="modal-close" onclick="closeModal('retModal')">✕</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Outlet Code <span class="required">*</span></label>
+        <input type="text" id="retCode" placeholder="e.g. RET001">
+      </div>
+      <div class="form-group">
+        <label>Outlet Name <span class="required">*</span></label>
+        <input type="text" id="retName" placeholder="Shop name">
+      </div>
+      <div class="form-group">
+        <label>Owner Name <span class="required">*</span></label>
+        <input type="text" id="retOwner" placeholder="Proprietor name">
+      </div>
+      <div class="form-group">
+        <label>Phone <span class="required">*</span></label>
+        <input type="tel" id="retPhone" placeholder="10-digit mobile">
+      </div>
+      <div class="form-group">
+        <label>Zone</label>
+        <select id="retZone">
+          <option>North</option><option>South</option><option>East</option>
+          <option>West</option><option>Central</option><option>Own Outlet</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Credit Limit (₹)</label>
+        <input type="number" id="retCredit" placeholder="10000" min="0">
+      </div>
+      <div class="form-group">
+        <label>Fridge Provided</label>
+        <select id="retFridge">
+          <option value="yes">Yes</option><option value="no">No</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Fridge Serial #</label>
+        <input type="text" id="retFridgeSn" placeholder="Optional serial no.">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="retStatus">
+          <option value="active">Active</option><option value="inactive">Inactive</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>GSTIN</label>
+        <input type="text" id="retGst" placeholder="Optional">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:12px;">
+      <label>Address <span class="required">*</span></label>
+      <textarea id="retAddress" placeholder="Full address..."></textarea>
+    </div>
+    <input type="hidden" id="retEditId">
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('retModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRetailer()">Save Retailer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Product Modal -->
+<div class="modal-overlay" id="prodModal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <div class="modal-title" id="prodModalTitle">🍨 Add Product</div>
+      <div class="modal-close" onclick="closeModal('prodModal')">✕</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Product Code <span class="required">*</span></label>
+        <input type="text" id="prodCode" placeholder="e.g. ICE001">
+      </div>
+      <div class="form-group">
+        <label>Product Name <span class="required">*</span></label>
+        <input type="text" id="prodName" placeholder="e.g. Strawberry Cone">
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="prodCat">
+          <option>Cone</option><option>Cup</option><option>Bar</option>
+          <option>Stick</option><option>Tub</option><option>Stick Pack</option><option>Family Pack</option><option>Bulk</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Unit</label>
+        <select id="prodUnit">
+          <option>Piece</option><option>Box</option><option>Dozen</option><option>Kg</option><option>Litre</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Sale Rate (₹) <span class="required">*</span></label>
+        <input type="number" id="prodSaleRate" min="0" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Cost Rate (₹)</label>
+        <input type="number" id="prodCostRate" min="0" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Opening Stock</label>
+        <input type="number" id="prodStock" min="0" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="prodStatus">
+          <option value="active">Active</option><option value="inactive">Inactive</option>
+        </select>
+      </div>
+    </div>
+    <input type="hidden" id="prodEditId">
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('prodModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProduct()">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =================== DATA LAYER ===================
+const DB = {
+  get(key) { try { return JSON.parse(localStorage.getItem('jersey_' + key) || 'null'); } catch(e){ return null; } },
+  set(key, val) { localStorage.setItem('jersey_' + key, JSON.stringify(val)); },
+  nextId(key) {
+    const ids = DB.get('ids') || {};
+    ids[key] = (ids[key] || 1000) + 1;
+    DB.set('ids', ids);
+    return ids[key];
+  }
+};
+
+let retailers = DB.get('retailers') || [];
+let products = DB.get('products') || [];
+let sales = DB.get('sales') || [];
+let collections = DB.get('collections') || [];
+let orders = DB.get('orders') || [];
+
+function save() {
+  DB.set('retailers', retailers);
+  DB.set('products', products);
+  DB.set('sales', sales);
+  DB.set('collections', collections);
+  DB.set('orders', orders);
+}
+
+// =================== SEED DATA ===================
+function seedData() {
+  if(retailers.length > 0) return;
+  const zones = ['North','South','East','West','Central'];
+  const retNames = [
+    'Shivam Stores','Sunrise General','Cool Corner','Ice Palace','Frost Mart',
+    'Chilled Zone','Snowy Delight','Arctic Sweets','Polar Fresh','Summit Store',
+    'Hillcrest Mart','Valley Cool','River Side Shop','Garden Fresh','Metro Mart',
+    'Star Grocery','City Cool','Town Sweet','Lake View Store','Park Corner'
+  ];
+  for(let i=0;i<20;i++) {
+    retailers.push({
+      id: 1001+i, code: 'RET'+(100+i+1),
+      name: retNames[i], owner: 'Owner '+(i+1),
+      phone: '9'+String(8000000000+i).slice(1),
+      zone: i===0?'Own Outlet':zones[i%5],
+      address: (i+1)+', Main Road, Area '+(i%5+1),
+      creditLimit: (i===0)?500000:(5000+i*2000),
+      fridge: i<18?'yes':'no', fridgeSn: i<18?'FRG'+String(1000+i):'',
+      status: 'active', gst: '', balance: 0
+    });
+  }
+  const prods = [
+    {code:'ICE001',name:'Strawberry Cone',cat:'Cone',unit:'Piece',saleRate:20,costRate:12,stock:500},
+    {code:'ICE002',name:'Chocolate Bar',cat:'Bar',unit:'Piece',saleRate:30,costRate:18,stock:400},
+    {code:'ICE003',name:'Vanilla Cup',cat:'Cup',unit:'Piece',saleRate:25,costRate:15,stock:350},
+    {code:'ICE004',name:'Mango Stick',cat:'Stick',unit:'Piece',saleRate:15,costRate:9,stock:600},
+    {code:'ICE005',name:'Butterscotch Tub 1L',cat:'Tub',unit:'Piece',saleRate:180,costRate:110,stock:100},
+    {code:'ICE006',name:'Family Pack 2L',cat:'Family Pack',unit:'Piece',saleRate:320,costRate:195,stock:80},
+    {code:'ICE007',name:'Choco-Vanilla Swirl',cat:'Cone',unit:'Piece',saleRate:35,costRate:20,stock:300},
+    {code:'ICE008',name:'Mixed Fruit Bar',cat:'Bar',unit:'Piece',saleRate:25,costRate:15,stock:450},
+  ];
+  prods.forEach((p,i) => { products.push({id:2001+i,...p,status:'active'}); });
+
+  // Seed 3 months of sales
+  const now = new Date();
+  for(let d=90;d>=0;d--) {
+    const dt = new Date(now); dt.setDate(dt.getDate()-d);
+    const dateStr = dt.toISOString().slice(0,10);
+    const numSales = Math.floor(Math.random()*6)+2;
+    for(let j=0;j<numSales;j++) {
+      const ret = retailers[Math.floor(Math.random()*20)];
+      const prod = products[Math.floor(Math.random()*products.length)];
+      const qty = Math.floor(Math.random()*50)+5;
+      const amt = qty*prod.saleRate;
+      const disc = Math.random()>0.8?Math.floor(amt*0.05):0;
+      const net = amt-disc;
+      const payOptions = ['credit','cash','cash','credit'];
+      const pay = payOptions[Math.floor(Math.random()*4)];
+      sales.push({
+        id: DB.nextId('sale'), date: dateStr,
+        retailerId: ret.id, retailerName: ret.name,
+        productId: prod.id, productName: prod.name,
+        qty, rate: prod.saleRate, amount: amt, discount: disc, net, payment: pay,
+        invoice: 'INV'+DB.nextId('inv'), notes: ''
+      });
+    }
+  }
+
+  // Seed collections for ~70% of sales
+  sales.filter(s=>s.payment!=='cash').forEach(s => {
+    if(Math.random()<0.7) {
+      const collected = Math.random()>0.3 ? s.net : Math.floor(s.net*0.5);
+      collections.push({
+        id: DB.nextId('coll'), date: s.date,
+        retailerId: s.retailerId, retailerName: s.retailerName,
+        invoice: s.invoice, billed: s.net, collected, balance: s.net-collected,
+        mode: ['Cash','UPI','Bank Transfer'][Math.floor(Math.random()*3)],
+        ref: '', notes: '',
+        status: collected>=s.net?'collected':collected>0?'partial':'pending'
+      });
+    }
+  });
+
+  // Seed orders
+  for(let i=0;i<12;i++) {
+    const prod = products[Math.floor(Math.random()*products.length)];
+    const qty = Math.floor(Math.random()*500)+100;
+    const dt = new Date(now); dt.setDate(dt.getDate()-i*7);
+    const del = new Date(dt); del.setDate(del.getDate()+3);
+    orders.push({
+      id: DB.nextId('ord'), date: dt.toISOString().slice(0,10),
+      productId: prod.id, productName: prod.name,
+      qty, cost: prod.costRate, total: qty*prod.costRate,
+      delivery: del.toISOString().slice(0,10),
+      status: i<2?'pending':i<4?'confirmed':'delivered',
+      ref: 'JC'+String(9000+i), notes: ''
+    });
+  }
+
+  // Update retailer balances
+  retailers.forEach(r => {
+    const rSales = sales.filter(s=>s.retailerId===r.id && s.payment==='credit').reduce((a,b)=>a+b.net,0);
+    const rColl = collections.filter(c=>c.retailerId===r.id).reduce((a,b)=>a+b.collected,0);
+    r.balance = Math.max(0, rSales - rColl);
+  });
+
+  save();
+}
+
+// =================== NAVIGATION ===================
+let currentPage = 'dashboard';
+let salesTabFilter = 'all';
+let reportTab = 'summary';
+
+function showPage(p) {
+  currentPage = p;
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  const items = document.querySelectorAll('.nav-item');
+  items.forEach(el => { if(el.getAttribute('onclick') && el.getAttribute('onclick').includes("'"+p+"'")) el.classList.add('active'); });
+
+  if(p==='dashboard') renderDashboard();
+  if(p==='sales') renderSales();
+  if(p==='collections') renderCollections();
+  if(p==='orders') renderOrders();
+  if(p==='retailers') renderRetailers();
+  if(p==='products') renderProducts();
+  if(p==='reports') { populateRptSelects(); generateReport(); }
+}
+
+// =================== HELPERS ===================
+const fmt = n => '₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2});
+const today = () => new Date().toISOString().slice(0,10);
+const thisMonth = () => today().slice(0,7);
+const thisYear = () => today().slice(0,4);
+
+function dateInPeriod(dateStr, period) {
+  if(period==='today') return dateStr===today();
+  if(period==='week') {
+    const d = new Date(dateStr), now = new Date();
+    const diff = (now-d)/(1000*60*60*24);
+    return diff>=0 && diff<7;
+  }
+  if(period==='month') return dateStr.startsWith(thisMonth());
+  if(period==='year') return dateStr.startsWith(thisYear());
+  return true;
+}
+
+// =================== MODAL UTILS ===================
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Close modal on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', function(e) { if(e.target===this) this.classList.remove('open'); });
+});
+
+// =================== DASHBOARD ===================
+let dashPeriod = 'today';
+let dashCharts = {};
+
+function setDashPeriod(p, el) {
+  dashPeriod = p;
+  document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderDashStats();
+  renderDashCharts();
+}
+
+function renderDashboard() {
+  // Header
+  const h = new Date().getHours();
+  document.getElementById('bannerGreeting').textContent = (h<12?'Good Morning':h<17?'Good Afternoon':'Good Evening')+', Admin! 👋';
+  document.getElementById('bannerDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ' · Vishil Ice Cream Distribution';
+  const topDateInfo = document.getElementById('topDateInfo');
+  topDateInfo.innerHTML = new Date().toLocaleDateString('en-IN',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+
+  const ts = sales.filter(s=>s.date===today());
+  const ms = sales.filter(s=>s.date.startsWith(thisMonth()));
+  document.getElementById('bannerStats').innerHTML = `
+    <div class="bs"><div class="bs-val">${ts.length}</div><div class="bs-lbl">Today Sales</div></div>
+    <div class="bs"><div class="bs-val">${fmt(ts.reduce((a,b)=>a+b.net,0))}</div><div class="bs-lbl">Today Amount</div></div>
+    <div class="bs"><div class="bs-val">${ms.length}</div><div class="bs-lbl">Month Sales</div></div>
+  `;
+
+  renderDashStats();
+  renderDashCharts();
+  renderRecentActivity();
+}
+
+function renderDashStats() {
+  const ss = sales.filter(s=>dateInPeriod(s.date,dashPeriod));
+  const cs = collections.filter(c=>dateInPeriod(c.date,dashPeriod));
+  const os = orders.filter(o=>dateInPeriod(o.date,dashPeriod));
+  const totalSale = ss.reduce((a,b)=>a+b.net,0);
+  const totalColl = cs.reduce((a,b)=>a+b.collected,0);
+  const pending = collections.filter(c=>c.balance>0).reduce((a,b)=>a+b.balance,0);
+  const totalOrd = os.reduce((a,b)=>a+b.total,0);
+  const activeRet = retailers.filter(r=>r.status==='active').length;
+
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-card blue">
+      <div class="stat-label">Total Sales</div>
+      <div class="stat-value">${fmt(totalSale)}</div>
+      <div class="stat-sub">${ss.length} transactions</div>
+    </div>
+    <div class="stat-card mint">
+      <div class="stat-label">Collections</div>
+      <div class="stat-value">${fmt(totalColl)}</div>
+      <div class="stat-sub">${cs.length} payments</div>
+    </div>
+    <div class="stat-card pink">
+      <div class="stat-label">Outstanding</div>
+      <div class="stat-value">${fmt(pending)}</div>
+      <div class="stat-sub">Across all retailers</div>
+    </div>
+    <div class="stat-card gold">
+      <div class="stat-label">Orders to Vishil</div>
+      <div class="stat-value">${fmt(totalOrd)}</div>
+      <div class="stat-sub">${os.length} orders</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-label">Active Outlets</div>
+      <div class="stat-value">${activeRet}</div>
+      <div class="stat-sub">of ${retailers.length} total</div>
+    </div>
+  `;
+}
+
+function renderDashCharts() {
+  Object.values(dashCharts).forEach(c => { try{c.destroy();}catch(e){} });
+  dashCharts = {};
+
+  const ss = sales.filter(s=>dateInPeriod(s.date,dashPeriod));
+
+  // Chart 1: Sales by outlet
+  const retMap = {};
+  ss.forEach(s => { retMap[s.retailerName]=(retMap[s.retailerName]||0)+s.net; });
+  const retSorted = Object.entries(retMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  dashCharts.outlets = new Chart(document.getElementById('chartOutlets'), {
+    type:'bar',
+    data: {
+      labels: retSorted.map(r=>r[0].slice(0,14)),
+      datasets:[{label:'Sales (₹)', data:retSorted.map(r=>r[1]), backgroundColor:'#4a90d9', borderRadius:4}]
+    },
+    options: {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:9},maxRotation:45}},y:{ticks:{callback:v=>'₹'+v.toLocaleString('en-IN')}}}}
+  });
+
+  // Chart 2: Trend (last 14 days or 12 months)
+  let trendLabels=[], trendData=[];
+  if(dashPeriod==='today') {
+    for(let h=0;h<24;h++) trendLabels.push(h+':00');
+    trendData = trendLabels.map((_,h)=>ss.filter(s=>{const d=new Date(s.date+'T00:00');return d.getHours()===h}).reduce((a,b)=>a+b.net,0));
+  } else if(dashPeriod==='month') {
+    const now=new Date(); for(let d=29;d>=0;d--){const dt=new Date(now);dt.setDate(dt.getDate()-d);trendLabels.push(dt.toISOString().slice(0,10).slice(5));trendData.push(sales.filter(s=>s.date===dt.toISOString().slice(0,10)).reduce((a,b)=>a+b.net,0));}
+  } else if(dashPeriod==='year') {
+    for(let m=11;m>=0;m--){const dt=new Date();dt.setMonth(dt.getMonth()-m);const ym=dt.toISOString().slice(0,7);trendLabels.push(dt.toLocaleDateString('en-IN',{month:'short'}));trendData.push(sales.filter(s=>s.date.startsWith(ym)).reduce((a,b)=>a+b.net,0));}
+  } else {
+    for(let d=13;d>=0;d--){const dt=new Date();dt.setDate(dt.getDate()-d);trendLabels.push(dt.toISOString().slice(5,10));trendData.push(sales.filter(s=>s.date===dt.toISOString().slice(0,10)).reduce((a,b)=>a+b.net,0));}
+  }
+  dashCharts.trend = new Chart(document.getElementById('chartTrend'), {
+    type:'line',
+    data:{labels:trendLabels,datasets:[{label:'Sales',data:trendData,borderColor:'#1a3a6b',backgroundColor:'rgba(26,58,107,0.08)',tension:0.3,fill:true,pointRadius:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'₹'+v.toLocaleString('en-IN')}}}}
+  });
+
+  // Chart 3: Product mix
+  const prodMap={};
+  ss.forEach(s=>{prodMap[s.productName]=(prodMap[s.productName]||0)+s.net;});
+  const prodEntries=Object.entries(prodMap);
+  const pColors=['#4a90d9','#f0a500','#2ecc8f','#e05a8a','#7c4dff','#ff7043','#26c6da','#66bb6a'];
+  dashCharts.products = new Chart(document.getElementById('chartProducts'), {
+    type:'doughnut',
+    data:{labels:prodEntries.map(p=>p[0]),datasets:[{data:prodEntries.map(p=>p[1]),backgroundColor:pColors.slice(0,prodEntries.length),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10}}}}
+  });
+
+  // Chart 4: Collection status
+  const coll=collections.filter(c=>dateInPeriod(c.date,dashPeriod));
+  const collected=coll.filter(c=>c.status==='collected').reduce((a,b)=>a+b.collected,0);
+  const partial=coll.filter(c=>c.status==='partial').reduce((a,b)=>a+b.collected,0);
+  const pending=coll.filter(c=>c.status==='pending').reduce((a,b)=>a+b.billed,0);
+  dashCharts.coll = new Chart(document.getElementById('chartCollections'), {
+    type:'doughnut',
+    data:{labels:['Collected','Partial','Pending'],datasets:[{data:[collected,partial,pending],backgroundColor:['#2ecc8f','#f0a500','#e05a8a'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:10}}}}
+  });
+}
+
+function renderRecentActivity() {
+  const recent = [...sales].sort((a,b)=>b.id-a.id).slice(0,8);
+  document.getElementById('dashRecentSales').innerHTML = recent.length ? `
+    <table style="width:100%;font-size:12px;">
+      <thead><tr><th>Date</th><th>Retailer</th><th>Product</th><th>Amount</th><th>Status</th></tr></thead>
+      <tbody>${recent.map(s=>`<tr>
+        <td>${s.date.slice(5)}</td><td>${s.retailerName.slice(0,16)}</td>
+        <td>${s.productName.slice(0,14)}</td><td>${fmt(s.net)}</td>
+        <td><span class="badge badge-${s.payment==='cash'?'green':s.payment==='credit'?'amber':'blue'}">${s.payment}</span></td>
+      </tr>`).join('')}</tbody>
+    </table>` : '<div class="empty-state"><p>No recent sales</p></div>';
+
+  const pendingColls = collections.filter(c=>c.balance>0).sort((a,b)=>b.balance-a.balance).slice(0,8);
+  document.getElementById('dashPendingColl').innerHTML = pendingColls.length ? pendingColls.map(c=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #eef2f8;">
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${c.retailerName.slice(0,20)}</div>
+        <div style="font-size:11px;color:#8a9ab0;">${c.date} · ${c.invoice||'—'}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:13px;font-weight:700;color:#d93535;">${fmt(c.balance)}</div>
+        <div style="font-size:11px;color:#8a9ab0;">outstanding</div>
+      </div>
+    </div>`).join('') : '<div class="empty-state"><p>🎉 No pending collections!</p></div>';
+}
+
+// =================== SALES ===================
+function populateSaleSelects() {
+  const retSel = document.getElementById('saleRetailer');
+  retSel.innerHTML = retailers.filter(r=>r.status==='active').map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+  const prodSel = document.getElementById('saleProduct');
+  prodSel.innerHTML = products.filter(p=>p.status==='active').map(p=>`<option value="${p.id}" data-rate="${p.saleRate}">${p.name}</option>`).join('');
+  onSaleProdChange();
+  const retFilter = document.getElementById('salesRetFilter');
+  retFilter.innerHTML = '<option value="">All Retailers</option>' + retailers.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+}
+
+function onSaleProdChange() {
+  const sel = document.getElementById('saleProduct');
+  if(sel.selectedOptions.length) {
+    document.getElementById('saleRate').value = sel.selectedOptions[0].dataset.rate||'';
+    calcSaleAmt();
+  }
+}
+
+function calcSaleAmt() {
+  const q=parseFloat(document.getElementById('saleQty').value)||0;
+  const r=parseFloat(document.getElementById('saleRate').value)||0;
+  const d=parseFloat(document.getElementById('saleDisc').value)||0;
+  const amt=q*r; const net=Math.max(0,amt-d);
+  document.getElementById('saleAmt').value=amt.toFixed(2);
+  document.getElementById('saleNet').value=net.toFixed(2);
+}
+
+function openSaleModal(id) {
+  populateSaleSelects();
+  const edit = id ? sales.find(s=>s.id===id) : null;
+  document.getElementById('saleModalTitle').textContent = edit ? '✏️ Edit Sale' : '🛒 Add Sale';
+  document.getElementById('saleEditId').value = id||'';
+  document.getElementById('saleDate').value = edit?edit.date:today();
+  if(edit) {
+    document.getElementById('saleRetailer').value=edit.retailerId;
+    document.getElementById('saleProduct').value=edit.productId;
+    document.getElementById('saleQty').value=edit.qty;
+    document.getElementById('saleRate').value=edit.rate;
+    document.getElementById('saleAmt').value=edit.amount;
+    document.getElementById('saleDisc').value=edit.discount;
+    document.getElementById('saleNet').value=edit.net;
+    document.getElementById('saleInv').value=edit.invoice;
+    document.getElementById('salePay').value=edit.payment;
+    document.getElementById('saleNotes').value=edit.notes||'';
+  } else {
+    document.getElementById('saleQty').value='';
+    document.getElementById('saleRate').value='';
+    document.getElementById('saleAmt').value='';
+    document.getElementById('saleDisc').value='0';
+    document.getElementById('saleNet').value='';
+    document.getElementById('saleInv').value='INV'+String(Date.now()).slice(-6);
+    document.getElementById('salePay').value='credit';
+    document.getElementById('saleNotes').value='';
+    onSaleProdChange();
+  }
+  openModal('saleModal');
+}
+
+function saveSale() {
+  const id = parseInt(document.getElementById('saleEditId').value)||null;
+  const retId = parseInt(document.getElementById('saleRetailer').value);
+  const prodId = parseInt(document.getElementById('saleProduct').value);
+  const ret = retailers.find(r=>r.id===retId);
+  const prod = products.find(p=>p.id===prodId);
+  if(!ret||!prod) return alert('Select retailer and product');
+  const qty=parseFloat(document.getElementById('saleQty').value)||0;
+  const rate=parseFloat(document.getElementById('saleRate').value)||0;
+  if(!qty||!rate) return alert('Enter quantity and rate');
+  const amt=qty*rate, disc=parseFloat(document.getElementById('saleDisc').value)||0, net=Math.max(0,amt-disc);
+  const entry = {
+    id: id||DB.nextId('sale'), date:document.getElementById('saleDate').value,
+    retailerId:retId, retailerName:ret.name, productId:prodId, productName:prod.name,
+    qty, rate, amount:amt, discount:disc, net, invoice:document.getElementById('saleInv').value||('INV'+DB.nextId('inv')),
+    payment:document.getElementById('salePay').value, notes:document.getElementById('saleNotes').value
+  };
+  if(id) { const idx=sales.findIndex(s=>s.id===id); sales[idx]=entry; }
+  else { sales.unshift(entry); }
+  save(); closeModal('saleModal'); renderSales();
+}
+
+function deleteSale(id) {
+  if(!confirm('Delete this sale?')) return;
+  sales=sales.filter(s=>s.id!==id); save(); renderSales();
+}
+
+function setSalesTab(t, el) {
+  salesTabFilter=t;
+  document.querySelectorAll('#page-sales .tab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  renderSales();
+}
+
+function renderSales() {
+  const search=(document.getElementById('salesSearch').value||'').toLowerCase();
+  const retF=document.getElementById('salesRetFilter').value;
+  let filtered=sales.filter(s=>{
+    if(!dateInPeriod(s.date,salesTabFilter==='all'?'all':salesTabFilter)) return false;
+    if(retF && String(s.retailerId)!==retF) return false;
+    if(search && !(s.retailerName.toLowerCase().includes(search)||s.productName.toLowerCase().includes(search)||s.invoice.toLowerCase().includes(search))) return false;
+    return true;
+  });
+  const body=document.getElementById('salesBody');
+  const empty=document.getElementById('salesEmpty');
+  if(!filtered.length){body.innerHTML='';empty.style.display='block';} else {
+    empty.style.display='none';
+    body.innerHTML=filtered.map((s,i)=>`<tr>
+      <td>${i+1}</td><td>${s.date}</td><td>${s.retailerName}</td><td>${s.productName}</td>
+      <td>${s.qty}</td><td>${fmt(s.rate)}</td><td><b>${fmt(s.net)}</b></td>
+      <td><span class="badge badge-${s.payment==='cash'?'green':s.payment==='credit'?'amber':'blue'}">${s.payment}</span></td>
+      <td class="action-btns">
+        <button class="btn btn-outline btn-sm" onclick="openSaleModal(${s.id})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSale(${s.id})">🗑</button>
+      </td>
+    </tr>`).join('');
+  }
+  const tot=filtered.reduce((a,b)=>a+b.net,0);
+  const cash=filtered.filter(s=>s.payment==='cash').reduce((a,b)=>a+b.net,0);
+  const cred=filtered.filter(s=>s.payment==='credit').reduce((a,b)=>a+b.net,0);
+  document.getElementById('salesSummary').innerHTML=`
+    <div class="stat-card blue"><div class="stat-label">Total Sales</div><div class="stat-value">${fmt(tot)}</div><div class="stat-sub">${filtered.length} entries</div></div>
+    <div class="stat-card mint"><div class="stat-label">Cash Sales</div><div class="stat-value">${fmt(cash)}</div><div class="stat-sub">${filtered.filter(s=>s.payment==='cash').length} entries</div></div>
+    <div class="stat-card gold"><div class="stat-label">Credit Sales</div><div class="stat-value">${fmt(cred)}</div><div class="stat-sub">${filtered.filter(s=>s.payment==='credit').length} entries</div></div>
+    <div class="stat-card pink"><div class="stat-label">Avg. Sale Value</div><div class="stat-value">${filtered.length?fmt(Math.round(tot/filtered.length)):fmt(0)}</div><div class="stat-sub">per transaction</div></div>
+  `;
+}
+
+// =================== COLLECTIONS ===================
+function populateCollSelects() {
+  const retSel = document.getElementById('collRetailer');
+  retSel.innerHTML = retailers.filter(r=>r.status==='active').map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+  onCollRetChange();
+}
+
+function onCollRetChange() {
+  const retId = parseInt(document.getElementById('collRetailer').value);
+  const pending = sales.filter(s=>s.retailerId===retId && s.payment==='credit');
+  const invSel = document.getElementById('collInvoice');
+  invSel.innerHTML = '<option value="">All / General</option>' + pending.map(s=>`<option value="${s.invoice}" data-amount="${s.net}">${s.invoice} – ${fmt(s.net)}</option>`).join('');
+  invSel.onchange = () => {
+    if(invSel.selectedOptions[0]&&invSel.selectedOptions[0].dataset.amount) {
+      document.getElementById('collBilled').value=invSel.selectedOptions[0].dataset.amount;
+      calcCollBalance();
+    }
+  };
+}
+
+function calcCollBalance() {
+  const b=parseFloat(document.getElementById('collBilled').value)||0;
+  const c=parseFloat(document.getElementById('collAmt').value)||0;
+  document.getElementById('collBalance').value=Math.max(0,b-c).toFixed(2);
+}
+
+function openCollModal(id) {
+  populateCollSelects();
+  const edit = id ? collections.find(c=>c.id===id) : null;
+  document.getElementById('collModalTitle').textContent = edit?'✏️ Edit Collection':'💳 Add Collection';
+  document.getElementById('collEditId').value=id||'';
+  document.getElementById('collDate').value=edit?edit.date:today();
+  if(edit) {
+    document.getElementById('collRetailer').value=edit.retailerId;
+    document.getElementById('collBilled').value=edit.billed;
+    document.getElementById('collAmt').value=edit.collected;
+    document.getElementById('collBalance').value=edit.balance;
+    document.getElementById('collMode').value=edit.mode;
+    document.getElementById('collRef').value=edit.ref||'';
+    document.getElementById('collNotes').value=edit.notes||'';
+  } else {
+    document.getElementById('collBilled').value='';
+    document.getElementById('collAmt').value='';
+    document.getElementById('collBalance').value='';
+    document.getElementById('collMode').value='Cash';
+    document.getElementById('collRef').value='';
+    document.getElementById('collNotes').value='';
+  }
+  openModal('collModal');
+}
+
+function saveCollection() {
+  const id=parseInt(document.getElementById('collEditId').value)||null;
+  const retId=parseInt(document.getElementById('collRetailer').value);
+  const ret=retailers.find(r=>r.id===retId);
+  if(!ret) return alert('Select retailer');
+  const billed=parseFloat(document.getElementById('collBilled').value)||0;
+  const collected=parseFloat(document.getElementById('collAmt').value)||0;
+  if(!collected) return alert('Enter collection amount');
+  const balance=Math.max(0,billed-collected);
+  const status=balance<=0?'collected':collected>0?'partial':'pending';
+  const entry={
+    id:id||DB.nextId('coll'), date:document.getElementById('collDate').value,
+    retailerId:retId, retailerName:ret.name,
+    invoice:document.getElementById('collInvoice').value||'General',
+    billed, collected, balance, mode:document.getElementById('collMode').value,
+    ref:document.getElementById('collRef').value, notes:document.getElementById('collNotes').value, status
+  };
+  if(id){const idx=collections.findIndex(c=>c.id===id);collections[idx]=entry;}
+  else{collections.unshift(entry);}
+  save(); closeModal('collModal'); renderCollections();
+}
+
+function deleteCollection(id) {
+  if(!confirm('Delete this collection?')) return;
+  collections=collections.filter(c=>c.id!==id); save(); renderCollections();
+}
+
+function renderCollections() {
+  const search=(document.getElementById('collSearch').value||'').toLowerCase();
+  const statusF=document.getElementById('collStatusFilter').value;
+  let filtered=collections.filter(c=>{
+    if(statusF && c.status!==statusF) return false;
+    if(search && !(c.retailerName.toLowerCase().includes(search)||(c.invoice||'').toLowerCase().includes(search))) return false;
+    return true;
+  });
+  const body=document.getElementById('collBody');
+  const empty=document.getElementById('collEmpty');
+  if(!filtered.length){body.innerHTML='';empty.style.display='block';}else{
+    empty.style.display='none';
+    body.innerHTML=filtered.map((c,i)=>`<tr>
+      <td>${i+1}</td><td>${c.date}</td><td>${c.retailerName}</td><td class="font-mono">${c.invoice||'—'}</td>
+      <td>${fmt(c.billed)}</td><td style="color:#1aab6d;font-weight:600;">${fmt(c.collected)}</td>
+      <td style="color:${c.balance>0?'#d93535':'#1aab6d'};font-weight:600;">${fmt(c.balance)}</td>
+      <td>${c.mode}</td>
+      <td><span class="badge badge-${c.status==='collected'?'green':c.status==='partial'?'amber':'red'}">${c.status}</span></td>
+      <td class="action-btns">
+        <button class="btn btn-outline btn-sm" onclick="openCollModal(${c.id})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCollection(${c.id})">🗑</button>
+      </td>
+    </tr>`).join('');
+  }
+  const tot=filtered.reduce((a,b)=>a+b.collected,0);
+  const outstanding=filtered.filter(c=>c.balance>0).reduce((a,b)=>a+b.balance,0);
+  document.getElementById('collStats').innerHTML=`
+    <div class="stat-card mint"><div class="stat-label">Collected</div><div class="stat-value">${fmt(tot)}</div><div class="stat-sub">${filtered.filter(c=>c.status==='collected').length} fully paid</div></div>
+    <div class="stat-card pink"><div class="stat-label">Outstanding</div><div class="stat-value">${fmt(outstanding)}</div><div class="stat-sub">${filtered.filter(c=>c.balance>0).length} records</div></div>
+    <div class="stat-card gold"><div class="stat-label">Partial</div><div class="stat-value">${filtered.filter(c=>c.status==='partial').length}</div><div class="stat-sub">partially collected</div></div>
+    <div class="stat-card blue"><div class="stat-label">Total Records</div><div class="stat-value">${filtered.length}</div><div class="stat-sub">collection entries</div></div>
+  `;
+}
+
+// =================== ORDERS ===================
+function populateOrdSelects() {
+  const prodSel=document.getElementById('ordProduct');
+  prodSel.innerHTML=products.filter(p=>p.status==='active').map(p=>`<option value="${p.id}" data-cost="${p.costRate}">${p.name}</option>`).join('');
+  onOrdProdChange();
+}
+function onOrdProdChange() {
+  const sel=document.getElementById('ordProduct');
+  if(sel.selectedOptions.length){document.getElementById('ordCost').value=sel.selectedOptions[0].dataset.cost||'';calcOrdTotal();}
+}
+function calcOrdTotal() {
+  const q=parseFloat(document.getElementById('ordQty').value)||0;
+  const c=parseFloat(document.getElementById('ordCost').value)||0;
+  document.getElementById('ordTotal').value=(q*c).toFixed(2);
+}
+function openOrderModal(id) {
+  populateOrdSelects();
+  const edit=id?orders.find(o=>o.id===id):null;
+  document.getElementById('orderModalTitle').textContent=edit?'✏️ Edit Order':'📦 Place Order';
+  document.getElementById('ordEditId').value=id||'';
+  document.getElementById('ordDate').value=edit?edit.date:today();
+  const del=new Date(); del.setDate(del.getDate()+3);
+  if(edit){
+    document.getElementById('ordProduct').value=edit.productId;
+    document.getElementById('ordQty').value=edit.qty;
+    document.getElementById('ordCost').value=edit.cost;
+    document.getElementById('ordTotal').value=edit.total;
+    document.getElementById('ordDelivery').value=edit.delivery;
+    document.getElementById('ordStatus').value=edit.status;
+    document.getElementById('ordRef').value=edit.ref||'';
+    document.getElementById('ordNotes').value=edit.notes||'';
+  } else {
+    document.getElementById('ordQty').value='';
+    document.getElementById('ordDelivery').value=del.toISOString().slice(0,10);
+    document.getElementById('ordStatus').value='pending';
+    document.getElementById('ordRef').value='JC'+String(Date.now()).slice(-5);
+    document.getElementById('ordNotes').value='';
+    onOrdProdChange();
+  }
+  openModal('orderModal');
+}
+function saveOrder() {
+  const id=parseInt(document.getElementById('ordEditId').value)||null;
+  const prodId=parseInt(document.getElementById('ordProduct').value);
+  const prod=products.find(p=>p.id===prodId);
+  if(!prod) return alert('Select product');
+  const qty=parseFloat(document.getElementById('ordQty').value)||0;
+  if(!qty) return alert('Enter quantity');
+  const cost=parseFloat(document.getElementById('ordCost').value)||0;
+  const entry={
+    id:id||DB.nextId('ord'), date:document.getElementById('ordDate').value,
+    productId:prodId, productName:prod.name, qty, cost, total:qty*cost,
+    delivery:document.getElementById('ordDelivery').value,
+    status:document.getElementById('ordStatus').value,
+    ref:document.getElementById('ordRef').value, notes:document.getElementById('ordNotes').value
+  };
+  if(id){const idx=orders.findIndex(o=>o.id===id);orders[idx]=entry;}
+  else{orders.unshift(entry);}
+  save(); closeModal('orderModal'); renderOrders();
+}
+function deleteOrder(id) {
+  if(!confirm('Delete this order?')) return;
+  orders=orders.filter(o=>o.id!==id); save(); renderOrders();
+}
+function renderOrders() {
+  const search=(document.getElementById('ordSearch').value||'').toLowerCase();
+  const statusF=document.getElementById('ordStatusFilter').value;
+  let filtered=orders.filter(o=>{
+    if(statusF && o.status!==statusF) return false;
+    if(search && !(o.productName.toLowerCase().includes(search)||(o.ref||'').toLowerCase().includes(search))) return false;
+    return true;
+  });
+  const body=document.getElementById('ordBody');
+  const empty=document.getElementById('ordEmpty');
+  if(!filtered.length){body.innerHTML='';empty.style.display='block';}else{
+    empty.style.display='none';
+    const statusColors={pending:'amber',confirmed:'blue',delivered:'green',cancelled:'red'};
+    body.innerHTML=filtered.map((o,i)=>`<tr>
+      <td>${i+1}</td><td>${o.date}</td><td>${o.productName}</td><td>${o.qty}</td>
+      <td>${fmt(o.cost)}</td><td><b>${fmt(o.total)}</b></td>
+      <td>${o.delivery||'—'}</td>
+      <td><span class="badge badge-${statusColors[o.status]||'blue'}">${o.status}</span></td>
+      <td style="font-size:11px;color:#8a9ab0;">${(o.notes||'').slice(0,20)}</td>
+      <td class="action-btns">
+        <button class="btn btn-outline btn-sm" onclick="openOrderModal(${o.id})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})">🗑</button>
+      </td>
+    </tr>`).join('');
+  }
+  const tot=filtered.reduce((a,b)=>a+b.total,0);
+  document.getElementById('ordStats').innerHTML=`
+    <div class="stat-card blue"><div class="stat-label">Total Orders</div><div class="stat-value">${filtered.length}</div><div class="stat-sub">filtered results</div></div>
+    <div class="stat-card gold"><div class="stat-label">Total Value</div><div class="stat-value">${fmt(tot)}</div><div class="stat-sub">order amount</div></div>
+    <div class="stat-card mint"><div class="stat-label">Delivered</div><div class="stat-value">${filtered.filter(o=>o.status==='delivered').length}</div><div class="stat-sub">completed</div></div>
+    <div class="stat-card pink"><div class="stat-label">Pending</div><div class="stat-value">${filtered.filter(o=>o.status==='pending').length}</div><div class="stat-sub">awaiting</div></div>
+  `;
+}
+
+// =================== RETAILERS ===================
+function openRetModal(id) {
+  const edit=id?retailers.find(r=>r.id===id):null;
+  document.getElementById('retModalTitle').textContent=edit?'✏️ Edit Retailer':'🏪 Add Retailer';
+  document.getElementById('retEditId').value=id||'';
+  document.getElementById('retCode').value=edit?edit.code:'RET'+String(retailers.length+101);
+  document.getElementById('retName').value=edit?edit.name:'';
+  document.getElementById('retOwner').value=edit?edit.owner:'';
+  document.getElementById('retPhone').value=edit?edit.phone:'';
+  document.getElementById('retZone').value=edit?edit.zone:'North';
+  document.getElementById('retCredit').value=edit?edit.creditLimit:10000;
+  document.getElementById('retFridge').value=edit?edit.fridge:'yes';
+  document.getElementById('retFridgeSn').value=edit?edit.fridgeSn||'':'';
+  document.getElementById('retStatus').value=edit?edit.status:'active';
+  document.getElementById('retGst').value=edit?edit.gst||'':'';
+  document.getElementById('retAddress').value=edit?edit.address:'';
+  openModal('retModal');
+}
+function saveRetailer() {
+  const id=parseInt(document.getElementById('retEditId').value)||null;
+  const name=document.getElementById('retName').value.trim();
+  const code=document.getElementById('retCode').value.trim();
+  if(!name||!code) return alert('Enter outlet code and name');
+  const entry={
+    id:id||DB.nextId('ret'), code, name,
+    owner:document.getElementById('retOwner').value,
+    phone:document.getElementById('retPhone').value,
+    zone:document.getElementById('retZone').value,
+    address:document.getElementById('retAddress').value,
+    creditLimit:parseFloat(document.getElementById('retCredit').value)||0,
+    fridge:document.getElementById('retFridge').value,
+    fridgeSn:document.getElementById('retFridgeSn').value,
+    status:document.getElementById('retStatus').value,
+    gst:document.getElementById('retGst').value,
+    balance:id?(retailers.find(r=>r.id===id)||{}).balance||0:0
+  };
+  if(id){const idx=retailers.findIndex(r=>r.id===id);retailers[idx]=entry;}
+  else{retailers.push(entry);}
+  save(); closeModal('retModal'); renderRetailers();
+}
+function deleteRetailer(id) {
+  if(!confirm('Delete this retailer?')) return;
+  retailers=retailers.filter(r=>r.id!==id); save(); renderRetailers();
+}
+function renderRetailers() {
+  const search=(document.getElementById('retSearch').value||'').toLowerCase();
+  const zone=document.getElementById('retZoneFilter').value;
+  let filtered=retailers.filter(r=>{
+    if(zone && r.zone!==zone) return false;
+    if(search && !(r.name.toLowerCase().includes(search)||r.code.toLowerCase().includes(search)||r.owner.toLowerCase().includes(search)||r.phone.includes(search))) return false;
+    return true;
+  });
+  const body=document.getElementById('retBody');
+  const empty=document.getElementById('retEmpty');
+  if(!filtered.length){body.innerHTML='';empty.style.display='block';}else{
+    empty.style.display='none';
+    body.innerHTML=filtered.map((r,i)=>`<tr>
+      <td>${i+1}</td>
+      <td class="font-mono">${r.code}</td>
+      <td><b>${r.name}</b>${r.zone==='Own Outlet'?'<span class="tag" style="margin-left:4px;">Own</span>':''}</td>
+      <td>${r.owner}</td><td>${r.phone}</td>
+      <td><span class="badge badge-blue">${r.zone}</span></td>
+      <td style="font-size:12px;max-width:140px;">${r.address}</td>
+      <td><span class="badge badge-${r.fridge==='yes'?'green':'red'}">${r.fridge==='yes'?'✓ Yes':'No'}</span></td>
+      <td>${fmt(r.creditLimit)}</td>
+      <td style="color:${(r.balance||0)>0?'#d93535':'#1aab6d'};font-weight:700;">${fmt(r.balance||0)}</td>
+      <td><span class="badge badge-${r.status==='active'?'green':'red'}">${r.status}</span></td>
+      <td class="action-btns">
+        <button class="btn btn-outline btn-sm" onclick="openRetModal(${r.id})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRetailer(${r.id})">🗑</button>
+      </td>
+    </tr>`).join('');
+  }
+  const active=filtered.filter(r=>r.status==='active').length;
+  const withFridge=filtered.filter(r=>r.fridge==='yes').length;
+  const totalBalance=filtered.reduce((a,b)=>a+(b.balance||0),0);
+  document.getElementById('retStats').innerHTML=`
+    <div class="stat-card blue"><div class="stat-label">Total Outlets</div><div class="stat-value">${filtered.length}</div><div class="stat-sub">${active} active</div></div>
+    <div class="stat-card mint"><div class="stat-label">Fridge Provided</div><div class="stat-value">${withFridge}</div><div class="stat-sub">outlets with fridge</div></div>
+    <div class="stat-card pink"><div class="stat-label">Total Outstanding</div><div class="stat-value">${fmt(totalBalance)}</div><div class="stat-sub">across outlets</div></div>
+    <div class="stat-card gold"><div class="stat-label">Zones</div><div class="stat-value">${[...new Set(filtered.map(r=>r.zone))].length}</div><div class="stat-sub">distribution zones</div></div>
+  `;
+}
+
+// =================== PRODUCTS ===================
+function openProdModal(id) {
+  const edit=id?products.find(p=>p.id===id):null;
+  document.getElementById('prodModalTitle').textContent=edit?'✏️ Edit Product':'🍨 Add Product';
+  document.getElementById('prodEditId').value=id||'';
+  document.getElementById('prodCode').value=edit?edit.code:'ICE'+String(products.length+101);
+  document.getElementById('prodName').value=edit?edit.name:'';
+  document.getElementById('prodCat').value=edit?edit.cat:'Cone';
+  document.getElementById('prodUnit').value=edit?edit.unit:'Piece';
+  document.getElementById('prodSaleRate').value=edit?edit.saleRate:'';
+  document.getElementById('prodCostRate').value=edit?edit.costRate:'';
+  document.getElementById('prodStock').value=edit?edit.stock:0;
+  document.getElementById('prodStatus').value=edit?edit.status:'active';
+  openModal('prodModal');
+}
+function saveProduct() {
+  const id=parseInt(document.getElementById('prodEditId').value)||null;
+  const name=document.getElementById('prodName').value.trim();
+  const code=document.getElementById('prodCode').value.trim();
+  if(!name||!code) return alert('Enter product code and name');
+  const entry={
+    id:id||DB.nextId('prod'), code, name,
+    cat:document.getElementById('prodCat').value,
+    unit:document.getElementById('prodUnit').value,
+    saleRate:parseFloat(document.getElementById('prodSaleRate').value)||0,
+    costRate:parseFloat(document.getElementById('prodCostRate').value)||0,
+    stock:parseInt(document.getElementById('prodStock').value)||0,
+    status:document.getElementById('prodStatus').value
+  };
+  if(id){const idx=products.findIndex(p=>p.id===id);products[idx]=entry;}
+  else{products.push(entry);}
+  save(); closeModal('prodModal'); renderProducts();
+}
+function deleteProduct(id) {
+  if(!confirm('Delete this product?')) return;
+  products=products.filter(p=>p.id!==id); save(); renderProducts();
+}
+function renderProducts() {
+  const body=document.getElementById('prodBody');
+  body.innerHTML=products.map((p,i)=>`<tr>
+    <td>${i+1}</td><td class="font-mono">${p.code}</td><td><b>${p.name}</b></td>
+    <td><span class="tag">${p.cat}</span></td><td>${p.unit}</td>
+    <td style="color:var(--jersey-blue);font-weight:600;">${fmt(p.saleRate)}</td>
+    <td>${fmt(p.costRate)}</td><td>${p.stock}</td>
+    <td><span class="badge badge-${p.status==='active'?'green':'red'}">${p.status}</span></td>
+    <td class="action-btns">
+      <button class="btn btn-outline btn-sm" onclick="openProdModal(${p.id})">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">🗑</button>
+    </td>
+  </tr>`).join('');
+}
+
+// =================== REPORTS ===================
+function populateRptSelects() {
+  const rFrom=document.getElementById('rptFrom');
+  const rTo=document.getElementById('rptTo');
+  if(!rFrom.value){rFrom.value=thisMonth()+'-01';rTo.value=today();}
+  const rRet=document.getElementById('rptRetailer');
+  rRet.innerHTML='<option value="">All Retailers</option>'+retailers.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+  const rProd=document.getElementById('rptProduct');
+  rProd.innerHTML='<option value="">All Products</option>'+products.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+}
+
+function setReportTab(t,el) {
+  reportTab=t;
+  document.querySelectorAll('#page-reports .tab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  generateReport();
+}
+
+function generateReport() {
+  const from=document.getElementById('rptFrom').value;
+  const to=document.getElementById('rptTo').value;
+  const retF=document.getElementById('rptRetailer').value;
+  const prodF=document.getElementById('rptProduct').value;
+  let ss=sales.filter(s=>s.date>=from && s.date<=to);
+  if(retF) ss=ss.filter(s=>String(s.retailerId)===retF);
+  if(prodF) ss=ss.filter(s=>String(s.productId)===prodF);
+  let cs=collections.filter(c=>c.date>=from && c.date<=to);
+  if(retF) cs=cs.filter(c=>String(c.retailerId)===retF);
+
+  const container=document.getElementById('reportContent');
+
+  if(reportTab==='summary') {
+    const totalSales=ss.reduce((a,b)=>a+b.net,0);
+    const totalColl=cs.reduce((a,b)=>a+b.collected,0);
+    const cashSales=ss.filter(s=>s.payment==='cash').reduce((a,b)=>a+b.net,0);
+    const creditSales=ss.filter(s=>s.payment==='credit').reduce((a,b)=>a+b.net,0);
+    const outstanding=cs.reduce((a,b)=>a+b.balance,0);
+    container.innerHTML=`
+      <div class="stats-grid" style="margin-bottom:18px;">
+        <div class="stat-card blue"><div class="stat-label">Total Sales</div><div class="stat-value">${fmt(totalSales)}</div><div class="stat-sub">${ss.length} transactions</div></div>
+        <div class="stat-card mint"><div class="stat-label">Cash Sales</div><div class="stat-value">${fmt(cashSales)}</div></div>
+        <div class="stat-card gold"><div class="stat-label">Credit Sales</div><div class="stat-value">${fmt(creditSales)}</div></div>
+        <div class="stat-card mint"><div class="stat-label">Collections</div><div class="stat-value">${fmt(totalColl)}</div><div class="stat-sub">${cs.length} payments</div></div>
+        <div class="stat-card pink"><div class="stat-label">Outstanding</div><div class="stat-value">${fmt(outstanding)}</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 All Sales (${from} to ${to})</div>
+        <div class="table-wrap">
+          <table id="rptSummaryTable">
+            <thead><tr><th>#</th><th>Date</th><th>Retailer</th><th>Product</th><th>Qty</th><th>Rate</th><th>Discount</th><th>Net</th><th>Mode</th><th>Invoice</th></tr></thead>
+            <tbody>${ss.map((s,i)=>`<tr><td>${i+1}</td><td>${s.date}</td><td>${s.retailerName}</td><td>${s.productName}</td><td>${s.qty}</td><td>${fmt(s.rate)}</td><td>${fmt(s.discount)}</td><td><b>${fmt(s.net)}</b></td><td>${s.payment}</td><td class="font-mono">${s.invoice}</td></tr>`).join('')}
+            <tr style="background:#f0f4fa;font-weight:700;"><td colspan="7">TOTAL</td><td>${fmt(totalSales)}</td><td colspan="2"></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+  else if(reportTab==='retailer') {
+    const retMap={};
+    ss.forEach(s=>{
+      if(!retMap[s.retailerId]) retMap[s.retailerId]={name:s.retailerName,qty:0,amount:0,txns:0};
+      retMap[s.retailerId].qty+=s.qty; retMap[s.retailerId].amount+=s.net; retMap[s.retailerId].txns++;
+    });
+    const rows=Object.values(retMap).sort((a,b)=>b.amount-a.amount);
+    container.innerHTML=`<div class="card">
+      <div class="card-title">🏪 Retailer-wise Sales (${from} to ${to})</div>
+      <div class="table-wrap"><table id="rptRetTable">
+        <thead><tr><th>Rank</th><th>Retailer</th><th>Transactions</th><th>Total Qty</th><th>Sales Amount</th><th>% Share</th><th>Outstanding</th></tr></thead>
+        <tbody>${rows.map((r,i)=>{
+          const total=rows.reduce((a,b)=>a+b.amount,0);
+          const outstanding=collections.filter(c=>c.retailerId&&c.balance>0 && String(c.retailerName)===r.name).reduce((a,b)=>a+b.balance,0);
+          return `<tr><td>${i+1}</td><td><b>${r.name}</b></td><td>${r.txns}</td><td>${r.qty}</td><td><b>${fmt(r.amount)}</b></td><td>${total?((r.amount/total)*100).toFixed(1)+'%':'—'}</td><td style="color:${outstanding>0?'#d93535':'#1aab6d'}">${fmt(outstanding)}</td></tr>`;
+        }).join('')}</tbody>
+      </table></div></div>`;
+  }
+  else if(reportTab==='product') {
+    const prodMap={};
+    ss.forEach(s=>{
+      if(!prodMap[s.productId]) prodMap[s.productId]={name:s.productName,qty:0,amount:0,txns:0};
+      prodMap[s.productId].qty+=s.qty; prodMap[s.productId].amount+=s.net; prodMap[s.productId].txns++;
+    });
+    const rows=Object.values(prodMap).sort((a,b)=>b.amount-a.amount);
+    const total=rows.reduce((a,b)=>a+b.amount,0);
+    container.innerHTML=`<div class="card">
+      <div class="card-title">🍨 Product-wise Sales (${from} to ${to})</div>
+      <div class="table-wrap"><table id="rptProdTable">
+        <thead><tr><th>Rank</th><th>Product</th><th>Transactions</th><th>Total Qty</th><th>Sales Amount</th><th>% Share</th></tr></thead>
+        <tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td><b>${r.name}</b></td><td>${r.txns}</td><td>${r.qty}</td><td><b>${fmt(r.amount)}</b></td><td>${total?((r.amount/total)*100).toFixed(1)+'%':'—'}</td></tr>`).join('')}
+        <tr style="background:#f0f4fa;font-weight:700;"><td colspan="4">TOTAL</td><td>${fmt(total)}</td><td>100%</td></tr>
+        </tbody>
+      </table></div></div>`;
+  }
+  else if(reportTab==='outstanding') {
+    const outstanding=retailers.map(r=>{
+      const rSales=sales.filter(s=>s.retailerId===r.id && s.payment!=='cash').reduce((a,b)=>a+b.net,0);
+      const rColl=collections.filter(c=>c.retailerId===r.id).reduce((a,b)=>a+b.collected,0);
+      const balance=Math.max(0,rSales-rColl);
+      return{...r,totalSales:rSales,totalColl:rColl,balance};
+    }).filter(r=>r.balance>0).sort((a,b)=>b.balance-a.balance);
+    const total=outstanding.reduce((a,b)=>a+b.balance,0);
+    container.innerHTML=`
+      <div class="stat-card pink" style="margin-bottom:18px;max-width:300px;"><div class="stat-label">Total Outstanding</div><div class="stat-value">${fmt(total)}</div><div class="stat-sub">${outstanding.length} retailers</div></div>
+      <div class="card"><div class="card-title">⚠️ Outstanding Balances</div>
+      <div class="table-wrap"><table id="rptOutTable">
+        <thead><tr><th>Rank</th><th>Code</th><th>Retailer</th><th>Zone</th><th>Phone</th><th>Total Billed</th><th>Collected</th><th>Outstanding</th><th>Credit Limit</th></tr></thead>
+        <tbody>${outstanding.map((r,i)=>`<tr>
+          <td>${i+1}</td><td class="font-mono">${r.code}</td><td><b>${r.name}</b></td>
+          <td>${r.zone}</td><td>${r.phone}</td>
+          <td>${fmt(r.totalSales)}</td><td>${fmt(r.totalColl)}</td>
+          <td style="color:#d93535;font-weight:700;">${fmt(r.balance)}</td>
+          <td>${fmt(r.creditLimit)}</td>
+        </tr>`).join('')}
+        <tr style="background:#fff0f0;font-weight:700;"><td colspan="7">TOTAL OUTSTANDING</td><td style="color:#d93535;">${fmt(total)}</td><td></td></tr>
+        </tbody>
+      </table></div></div>`;
+  }
+}
+
+function exportReport() {
+  if(!window.XLSX) return alert('Export library loading...');
+  const tabs={'summary':'rptSummaryTable','retailer':'rptRetTable','product':'rptProdTable','outstanding':'rptOutTable'};
+  const tableId=tabs[reportTab];
+  if(!tableId||!document.getElementById(tableId)) return alert('Generate report first');
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.table_to_sheet(document.getElementById(tableId));
+  XLSX.utils.book_append_sheet(wb,ws,'Report');
+  XLSX.writeFile(wb,'Vishil_Report_'+today()+'.xlsx');
+}
+
+function exportTableToExcel(tableId, name) {
+  if(!window.XLSX) return alert('Loading...');
+  const tbl=document.getElementById(tableId);
+  if(!tbl) return alert('No data');
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.table_to_sheet(tbl);
+  XLSX.utils.book_append_sheet(wb,ws,name);
+  XLSX.writeFile(wb,'Vishil_'+name+'_'+today()+'.xlsx');
+}
+
+// =================== INIT ===================
+window.onload = function() {
+  seedData();
+  // Update date every minute
+  function updateDate() {
+    const d=new Date();
+    document.getElementById('topDateInfo').textContent=d.toLocaleDateString('en-IN',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  }
+  updateDate();
+  setInterval(updateDate, 60000);
+  showPage('dashboard');
+};
+</script>
+</body>
+</html>
